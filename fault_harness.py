@@ -14,7 +14,7 @@ beneath the bindings cannot — the only defense is supervising the process from
 outside and restarting it.
 
 Every fault prints a structured result block. Copy those into
-docs/fault-catalog.md as you go.
+fault-catalog.md as you go.
 
 IMPORTANT: run each fault in a SEPARATE process invocation. A fault that
 crashes the interpreter will take the whole script with it — which is itself
@@ -60,7 +60,7 @@ def result(outcome, detail=""):
     if detail:
         print(detail)
     print("-" * 68)
-    print("\nRecord this in docs/fault-catalog.md before running the next fault.")
+    print("\nRecord this in fault-catalog.md before running the next fault.")
 
 
 # ----------------------------------------------------------------------
@@ -161,7 +161,12 @@ def fault_connection_drop(args):
     logger.start()
 
     print("\nMoving home first...")
-    rtde_c.moveJ(HOME, 0.5, 0.3)
+    try:
+        rtde_c.moveJ(HOME, 0.5, 0.3)
+    except Exception as e:
+        logger.stop()
+        print(f"[FAIL] Could not reach home before injecting the fault: {e}")
+        sys.exit(1)
 
     print(f"\nStarting SLOW long move (gives time to kill the container)")
     print(f"Killing container '{args.container}' in 3 seconds...")
@@ -174,8 +179,17 @@ def fault_connection_drop(args):
         time.sleep(3)
         print(f"\n  >>> killing container {args.container}")
         sys.stdout.flush()
-        subprocess.run(["docker", "kill", args.container],
-                       capture_output=True)
+        try:
+            proc = subprocess.run(["docker", "kill", args.container],
+                                  capture_output=True, text=True)
+        except FileNotFoundError:
+            print("  [!] docker not found on PATH — container was NOT killed")
+            return
+        if proc.returncode != 0:
+            # Otherwise a failed kill looks exactly like "survived the drop"
+            print(f"  [!] docker kill failed ({proc.returncode}): "
+                  f"{proc.stderr.strip()} — container was NOT killed")
+        sys.stdout.flush()
 
     threading.Thread(target=kill_later, daemon=True).start()
 

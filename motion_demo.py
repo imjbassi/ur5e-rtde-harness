@@ -60,10 +60,16 @@ def main():
     parser.add_argument("--hz", type=int, default=50,
                         help="Telemetry sample rate")
     args = parser.parse_args()
+    if args.hz <= 0:
+        parser.error("--hz must be positive")
+    if args.cycles < 0:
+        parser.error("--cycles must be >= 0")
 
     if args.log is None:
-        os.makedirs("logs", exist_ok=True)
         args.log = f"logs/baseline_{int(time.time())}.csv"
+    log_dir = os.path.dirname(args.log)
+    if log_dir:
+        os.makedirs(log_dir, exist_ok=True)
 
     # --- Connect --------------------------------------------------------
     print(f"Connecting to {args.host}...")
@@ -110,11 +116,12 @@ def main():
 
     finally:
         logger.stop()
-        try:
-            rtde_c.disconnect()
-            rtde_r.disconnect()
-        except Exception:
-            pass
+        # Disconnect each independently — a failure on one shouldn't leak the other
+        for iface in (rtde_c, rtde_r):
+            try:
+                iface.disconnect()
+            except Exception:
+                pass
 
     # --- Analyze --------------------------------------------------------
     print(f"\nTelemetry written to {args.log}")

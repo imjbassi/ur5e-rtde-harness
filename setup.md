@@ -82,7 +82,7 @@ source: https://sdurobotics.gitlab.io/ur_rtde/
 ## 5. Verify
 
 ```bash
-python src/connect_test.py
+python connect_test.py
 ```
 
 Expected:
@@ -152,4 +152,4 @@ reads and no motion. Confirm the pendant shows **Normal**, not
 
 **Segfault instead of an exception**
 That's not a bug in your setup. That's the thing this project exists to
-document. See `docs/fault-catalog.md`.
+document. See `fault-catalog.md`.

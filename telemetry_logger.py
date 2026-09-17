@@ -24,6 +24,8 @@ class TelemetryLogger:
     """Background CSV logger for RTDE receive telemetry."""
 
     def __init__(self, rtde_receive, filepath, sample_hz=50):
+        if sample_hz <= 0:
+            raise ValueError(f"sample_hz must be positive, got {sample_hz}")
         self.rtde_r = rtde_receive
         self.filepath = filepath
         self.interval = 1.0 / sample_hz
@@ -45,7 +47,12 @@ class TelemetryLogger:
                 "safety_mode",
             ])
 
-            next_sample = time.time()
+            self._ready.set()   # header is on disk; find_gaps can read the file
+
+            # Schedule on a monotonic clock so wall-clock adjustments (NTP,
+            # DST) can't stall or burst the sampler. Row timestamps stay
+            # wall-clock so they line up with other logs.
+            next_sample = time.monotonic()
             while self._running:
                 try:
                     ts = time.time()
@@ -74,23 +81,39 @@ class TelemetryLogger:
                         print(f"  [logger] read error: {e}")
 
                 next_sample += self.interval
-                sleep_for = next_sample - time.time()
+                sleep_for = next_sample - time.monotonic()
                 if sleep_for > 0:
                     time.sleep(sleep_for)
                 else:
                     # Fell behind schedule — resync rather than accumulating drift
-                    next_sample = time.time()
+                    next_sample = time.monotonic()
+
+    def _run(self):
+        try:
+            self._sample_loop()
+        except Exception as e:
+            # e.g. the log file couldn't be opened — surface it instead of
+            # letting the thread die silently.
+            print(f"  [logger] FATAL: {type(e).__name__}: {e}")
+        finally:
+            self._ready.set()
 
     def start(self):
         self._running = True
-        self._thread = threading.Thread(target=self._sample_loop, daemon=True)
+        self._ready = threading.Event()
+        self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
+        # Wait for the header to be written so a very short run still
+        # produces a valid CSV for find_gaps().
+        self._ready.wait(timeout=2.0)
         print(f"[logger] recording to {self.filepath} at {self.sample_hz} Hz")
 
     def stop(self):
         self._running = False
         if self._thread:
             self._thread.join(timeout=2.0)
+            if self._thread.is_alive():
+                print("[logger] warning: sampler thread still blocked on a read")
         print(f"[logger] stopped — {self.sample_count} samples, "
               f"{self.error_count} read errors")
 
@@ -108,10 +131,17 @@ def find_gaps(filepath, threshold_multiplier=3.0, expected_hz=50):
     threshold = expected_interval * threshold_multiplier
 
     timestamps = []
-    with open(filepath) as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            timestamps.append(float(row["timestamp"]))
+    try:
+        with open(filepath, newline="") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                try:
+                    timestamps.append(float(row["timestamp"]))
+                except (KeyError, TypeError, ValueError):
+                    # Truncated last row from a hard crash mid-write
+                    continue
+    except FileNotFoundError:
+        return []
 
     gaps = []
     for i in range(1, len(timestamps)):
@@ -127,10 +157,11 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) < 2:
-        print("Usage: python telemetry_logger.py <logfile.csv>")
+        print("Usage: python telemetry_logger.py <logfile.csv> [expected_hz]")
         sys.exit(1)
 
-    gaps = find_gaps(sys.argv[1])
+    hz = float(sys.argv[2]) if len(sys.argv) > 2 else 50
+    gaps = find_gaps(sys.argv[1], expected_hz=hz)
     if not gaps:
         print("No gaps detected — telemetry was continuous.")
     else:

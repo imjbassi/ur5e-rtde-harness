@@ -70,7 +70,7 @@ process rather than raising something catchable.
 ## Quick start
 
 ```bash
-# 1. Start the simulator (see docs/setup.md for details)
+# 1. Start the simulator (see setup.md for details)
 docker run --rm -it -p 5900:5900 -p 6080:6080 \
   -p 29999:29999 -p 30001-30004:30001-30004 \
   universalrobots/ursim_e-series
@@ -82,32 +82,30 @@ docker run --rm -it -p 5900:5900 -p 6080:6080 \
 pip install ur_rtde
 
 # 4. Verify the connection
-python src/connect_test.py
+python connect_test.py
 
 # 5. Run a motion sequence with telemetry logging
-python src/motion_demo.py
+python motion_demo.py
 
 # 6. Induce faults and characterize the failures
-python src/fault_harness.py --fault connection_drop
+python fault_harness.py --fault connection_drop --container <ursim-container>
 ```
 
 Full setup, including the Docker networking gotcha that will bite you on
-Windows/WSL2, is in [`docs/setup.md`](docs/setup.md).
+Windows/WSL2, is in [`setup.md`](setup.md).
 
 ---
 
 ## Repo contents
 
 ```
-src/
-  connect_test.py      Minimal connection verification — run this first
-  motion_demo.py       Joint-space motion sequence with CSV telemetry logging
-  telemetry_logger.py  Reusable logger — samples RTDE receive at fixed rate
-  fault_harness.py     Deliberate fault injection + behavior characterization
-docs/
-  setup.md             URSim install, networking, teach pendant, WSL2 notes
-  rtde-notes.md        How RTDE works, the three interfaces, why segfaults happen
-  fault-catalog.md     Every fault: method, observed behavior, evidence
+connect_test.py        Minimal connection verification — run this first
+motion_demo.py         Joint-space motion sequence with CSV telemetry logging
+telemetry_logger.py    Reusable logger — samples RTDE receive at fixed rate
+fault_harness.py       Deliberate fault injection + behavior characterization
+setup.md               URSim install, networking, teach pendant, WSL2 notes
+rtde-notes.md          How RTDE works, the three interfaces, why segfaults happen
+fault-catalog.md       Every fault: method, observed behavior, evidence
 logs/                  CSV telemetry output lands here
 ```
 
@@ -123,7 +121,7 @@ logs/                  CSV telemetry output lands here
 | 4 | Control script never starts | Connect while the robot is powered off / brakes engaged | Reproduces `Failed to start control script` |
 | 5 | Protocol version mismatch | Request an unsupported RTDE version | Config-layer failure vs. runtime failure |
 
-Each is documented in [`docs/fault-catalog.md`](docs/fault-catalog.md) with
+Each is documented in [`fault-catalog.md`](fault-catalog.md) with
 method, observed behavior, exit code where relevant, and whether the failure was
 catchable in Python or killed the process outright.
 

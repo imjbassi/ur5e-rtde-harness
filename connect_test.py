@@ -63,7 +63,7 @@ def main():
     except Exception as e:
         print(f"[FAIL] Could not connect receive interface: {e}")
         print("       Check: is URSim running? Is port 30004 reachable?")
-        print("       See docs/setup.md, section 6 (WSL2 networking).")
+        print("       See setup.md, section 6 (WSL2 networking).")
         sys.exit(1)
 
     # --- 2. Robot mode --------------------------------------------------
@@ -97,7 +97,7 @@ def main():
     except Exception as e:
         print(f"[FAIL] Control interface failed: {e}")
         print("       Most likely: robot is not powered on / brakes engaged.")
-        print("       This is fault 4 in docs/fault-catalog.md.")
+        print("       This is fault 4 in fault-catalog.md.")
         sys.exit(1)
 
     print("\nAll checks passed. Ready to run motion_demo.py")
