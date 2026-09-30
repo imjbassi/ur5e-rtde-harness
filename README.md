@@ -6,6 +6,14 @@ A control and fault-characterization harness for UR5e robot arms, built against
 
 No physical robot required. Total hardware cost: $0.
 
+![Simulated UR5e running the motion_demo.py waypoint cycle, with live joint-angle telemetry](assets/ur5e_sim.gif)
+
+*The UR5e running the exact `motion_demo.py` waypoint cycle, rendered from the
+robot's published DH parameters via forward kinematics — left: the arm and its
+TCP path; right: the six `target_q` joint traces with the smooth accel/decel
+ramps `moveJ` produces at 0.5 rad/s. Regenerate with
+[`assets/render_sim.py`](assets/render_sim.py).*
+
 ![Demo: motion_demo.py driving a baseline run, then fault_harness.py characterizing a stale-handle fault](assets/demo.gif)
 
 *Terminal capture of `motion_demo.py` and `fault_harness.py` actually running,
